@@ -1,0 +1,92 @@
+# METCOM model v1.0
+# Caution: this script has a high processing demand, recommended code be executed in parts
+
+import s3fs
+import numpy as np
+import netCDF4 as nc
+import matplotlib.pyplot as plt
+
+# Use the anonymous credentials to access public data
+fs = s3fs.S3FileSystem(anon=True)
+
+# List contents of GOES-16 bucket.
+fs.ls('s3://noaa-goes16/')
+
+# List specific files of GOES-16 Full Disk data (multiband format) on a certain hour
+# Note: the `s3://` is not required
+files = np.array(fs.ls('noaa-goes16/ABI-L2-LVTPF/2021/183/12/'))
+files1 = np.array(fs.ls('noaa-goes16/ABI-L2-LVMPF/2021/183/12/'))
+ds = nc.Dataset(r'C:/Users/lcata/PycharmProjects/CA/OR_ABI-L2-LVTPF-'
+                r'M6_G16_s20211830000208_e20211830009516_c20211830010498.nc')
+ds1 = nc.Dataset(r'C:/Users/lcata/PycharmProjects/CA/OR_ABI-L2-LVMPF-'
+                r'M6_G16_s20211830000208_e20211830009516_c20211830010498.nc')
+
+# Download both files, and rename them the same name (without the directory structure)
+fs.get(files[0], files[0].split('/')[-1])
+ds = nc.Dataset(r'C:/Users/user/Pythonfile/'+files[0].split('/')[-1])
+fs.get(files1[0], files1[0].split('/')[-1])
+ds1 = nc.Dataset(r'C:/Users/user/Pythonfile/'+files1[0].split('/')[-1])
+
+# Data of interest from first file
+alt_LVT = ds['pressure'][:, :, :]
+LVT = ds['LVT'][:, :, :]
+scale_factor_LVT = 0.00236533
+add_offset_LVT = 165.0
+units_LVT = 'K'
+shape_LVT = 1086, 1086, 101  # y,x, pressure
+
+# Plots
+plt.contourf(ds['LVT'][:, :, 0])
+cbar = plt.colorbar()
+cbar.set_label('Temperature (K)')
+plt.title('Legacy Vertical Temperature (K)')
+plt.xlabel('x - coordinate')
+plt.ylabel('y - coordinate')
+plt.show()
+
+plt.hist(ds['LVT'][:, :, 0])
+plt.xlabel('Temperature (K)')
+plt.ylabel('Number of data points')
+plt.grid()
+plt.show()
+
+# Calculate standard deviation
+std_dev_LVT = np.std(LVT)
+
+# Calculate mean
+mean_LVT = np.mean(LVT)
+
+# Calculate Percent Nullity
+print(((101*1086**2)-LVT.count)*100)
+
+# Data of interest from second file
+alt_LVM = ds1['pressure'][:, :, :]
+LVM = ds1['LVM'][:, :, 0]
+scale_factor_LVM = 1.526*10**(-5)
+add_offset_LVM = 0.0
+units_LVM = '%'
+shape_LVM = 1086, 1086, 101  # y,x, pressure
+
+# Plots
+plt.contourf(ds1['LVM'][:, :, 0])
+cbar = plt.colorbar()
+cbar.set_label('Moisture (%)')
+plt.title('Legacy Vertical Moisture (%)')
+plt.xlabel('x - coordinate')
+plt.ylabel('y - coordinate')
+plt.show()
+
+plt.hist(ds1['LVM'][:,:,0])
+plt.xlabel('Moisture (%)')
+plt.ylabel('Number of data points')
+plt.grid()
+plt.show()
+
+# Calculate standard deviation
+std_dev_LVM = np.std(LVM)
+
+# Calculate mean
+mean_LVM = np.mean(LVM)
+
+# Calculate Percent Nullity
+print(((101*1086**2)-LVM.count)*100)

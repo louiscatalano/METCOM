@@ -1,0 +1,139 @@
+import math
+import random
+import netCDF4 as nc
+import numpy as np
+import numpy.ma as ma
+import matplotlib.pyplot as plt
+
+ds = nc.Dataset(r'C:/Users/user/Pythonfile/OR_ABI-L2-LVMPF-'
+                r'M6_G16_s20211830000208_e20211830009516_c20211830010498.nc')
+
+n = 68
+size = int(math.sqrt(n))
+n2 = size**2
+data_shape = 1086**2
+rx = random.randint(0, int(math.sqrt(data_shape)-1))
+ry = random.randint(0, int(math.sqrt(data_shape)-1))
+LVM_sample = ds['LVM'][rx:rx+size, ry:ry+size, 0]
+while ma.is_masked(LVM_sample) == True:
+    rx = random.randint(0, int(math.sqrt(data_shape) - 1))
+    ry = random.randint(0, int(math.sqrt(data_shape) - 1))
+    LVM_sample = ds['LVM'][rx:rx + size, ry:ry + size, 0]
+LVM_sample_x = ds['y'][rx:rx + n2]
+LVM_sample_y = ds['x'][ry:ry + n2]
+
+i_x_index = 0
+i_x_index2 = 0
+i_x_count = n2
+i_total = int(((n2**2)/2)+(n2/2))
+i_x = np.zeros(i_total)
+while i_x_index < i_total:
+    i_x[i_x_index] = LVM_sample_x[i_x_index2]
+    i_x_index += 1
+    if np.count_nonzero(i_x == LVM_sample_x[i_x_index2]) == i_x_count:
+        i_x_count -= 1
+        if i_x_index2 <= len(LVM_sample_x)-1:
+            i_x_index2 += 1
+
+i_y_index = 0
+i_y_index2 = 0
+i_y_count = n2
+i_y = np.zeros(i_total)
+while i_y_index < i_total:
+    i_y[i_y_index] = LVM_sample_y[i_y_index2]
+    i_y_index += 1
+    if np.count_nonzero(i_y == LVM_sample_y[i_y_index2]) == i_y_count:
+        i_y_count -= 1
+        if i_y_index2 <= len(LVM_sample_y)-1:
+            i_y_index2 += 1
+
+j_x_index = 0
+j_x_index2 = 0
+j_x_count = 1
+j_x = np.zeros(i_total)
+while j_x_index < i_total:
+    j_x[j_x_index] = LVM_sample_x[j_x_index2]
+    j_x_index += 1
+    j_x_index2 += 1
+    if j_x_index2 == n2:
+        j_x_index2 = 0 + j_x_count
+        while j_x_count < n2-2:
+            j_x_count += 1
+
+j_y_index = 0
+j_y_index2 = 0
+j_y_count = 1
+j_y = np.zeros(i_total)
+while j_y_index < i_total:
+    j_y[j_y_index] = LVM_sample_y[j_y_index2]
+    j_y_index += 1
+    j_y_index2 += 1
+    if j_y_index2 == n2:
+        j_y_index2 = 0 + j_y_count
+        while j_y_count < n2-2:
+            j_y_count += 1
+
+i_LVM_x = 0
+i_LVM_y = 0
+i_LVM_count = n2
+i_LVM_index = 0
+i_LVM = np.zeros(i_total)
+while i_LVM_index < i_total:
+    i_LVM[i_LVM_index] = LVM_sample[i_LVM_x, i_LVM_y]
+    i_LVM_index += 1
+    if np.count_nonzero(i_LVM == LVM_sample[i_LVM_x, i_LVM_y]) == i_LVM_count:
+        i_LVM_count -= 1
+        i_LVM_y += 1
+        if i_LVM_y == size:
+            i_LVM_x += 1
+            i_LVM_y = 0
+            if i_LVM_x == size:
+                break
+
+LVM_reshape = np.zeros(n2)
+reshape_index = 0
+reshape_x = 0
+reshape_y = 0
+while reshape_index < n2:
+    LVM_reshape[reshape_index] = LVM_sample[reshape_x, reshape_y]
+    reshape_index += 1
+    reshape_y += 1
+    if reshape_y == size:
+        reshape_y = 0
+        reshape_x += 1
+        if reshape_x == size:
+            break
+print(np.nanmean(LVM_reshape), np.nanstd(LVM_reshape))
+
+j_LVM_index = 0
+LVM_reshape_index = 0
+j_LVM = np.zeros(i_total)
+j_LVM_count = 1
+while j_LVM_index < i_total:
+    j_LVM[j_LVM_index] = LVM_reshape[LVM_reshape_index]
+    j_LVM_index += 1
+    LVM_reshape_index += 1
+    if LVM_reshape_index == n2:
+        LVM_reshape_index = 0 + j_LVM_count
+        if j_LVM_count < n2:
+            j_LVM_count += 1
+
+euclidean = np.zeros(i_total)
+eu_index = 0
+while eu_index <= i_total-1:
+    euclidean[eu_index] = math.sqrt(pow((j_x[eu_index]-i_x[eu_index]), 2)+pow((j_y[eu_index]-i_y[eu_index]), 2))
+    eu_index += 1
+
+sq_diff = np.zeros(i_total)
+sq_index = 0
+while sq_index <= i_total-1:
+    sq_diff[sq_index] = pow(j_LVM[sq_index]-i_LVM[sq_index], 2)
+    sq_index += 1
+
+font1 = {'family': 'Times New Roman'}
+font2 = {'family': 'Courier New'}
+fig, ax = plt.subplots()
+ax.scatter(euclidean, sq_diff, marker='+', color='black')
+plt.xlabel('Euclidean Distance (Radians)', fontdict=font2)
+plt.ylabel('Semivariance', fontdict=font2)
+plt.show()
